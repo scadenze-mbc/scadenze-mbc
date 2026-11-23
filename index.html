@@ -120,6 +120,7 @@
     <nav class="schede">
       <button class="attiva" data-vista="scadenze">Scadenze</button>
       <button data-vista="dipendenti">Dipendenti</button>
+      <button data-vista="azienda" id="tab-azienda" class="nascosto">Azienda</button>
     </nav>
   </header>
   <main>
@@ -139,6 +140,16 @@
     <section id="v-dipendenti" class="nascosto">
       <input class="cerca" id="cerca" type="search" placeholder="Cerca per nome, mansione o sede" aria-label="Cerca">
       <div id="lista-dipendenti"></div>
+    </section>
+    <section id="v-azienda" class="nascosto">
+      <div class="contatori" style="grid-template-columns: repeat(2, 1fr)">
+        <div class="cont r"><b id="az-scadute">0</b><small>scadute</small></div>
+        <div class="cont a"><b id="az-preavviso">0</b><small>in preavviso</small></div>
+      </div>
+      <div class="filtri" id="filtri-az">
+        <button data-f="preavviso" class="attiva">In preavviso</button><button data-f="tutte">Tutte</button>
+      </div>
+      <div id="lista-azienda"></div>
     </section>
     <p class="sola">Consultazione in sola lettura · le modifiche si fanno dal programma sul PC</p>
   </main>
@@ -230,6 +241,21 @@ function apriScheda(i) {
 }
 const chiudiScheda = () => $("velo").classList.add("nascosto");
 
+let filtroAz = "preavviso";
+function disegnaAzienda() {
+  const a = Array.isArray(dati.a) ? dati.a : null;
+  $("tab-azienda").classList.toggle("nascosto", !a);
+  if (!a) return;
+  const voci = a.map(s => ({ ...s, g: giorniA(s.d) })).sort((x, y) => x.g - y.g || x.t.localeCompare(y.t, "it"));
+  $("az-scadute").textContent = voci.filter(s => s.g < 0).length;
+  $("az-preavviso").textContent = voci.filter(s => s.g >= 0 && s.g <= s.p).length;
+  const vis = filtroAz === "tutte" ? voci : voci.filter(s => s.g <= s.p);
+  const liv = s => s.g < 0 ? "r" : s.g <= 7 ? "a" : s.g <= s.p ? "g" : "o";
+  $("lista-azienda").innerHTML = vis.length ? vis.map(s => `<div class="voce liv-${liv(s)}">
+    <div class="info"><div class="nome">${esc(s.t)}</div><div class="sotto">${esc([s.c, s.r].filter(Boolean).join(" · ") || "—")}</div></div>
+    <div class="giorni"><b>${testoGiorni(s.g)}</b>${fmt(s.d)}</div></div>`).join("")
+    : `<div class="vuoto">${filtroAz === "tutte" ? "Nessuna scadenza aziendale" : "Nessuna scadenza aziendale in preavviso 👍"}</div>`;
+}
 function disegna() {
   $("titolo").innerHTML = dati.azienda ? esc(dati.azienda) : 'Scadenze <span>MBC</span>';
   const gen = new Date(dati.generato);
@@ -238,7 +264,9 @@ function disegna() {
   const vecchi = (Date.now() - gen) / 86400000;
   $("avviso").classList.toggle("nascosto", vecchi < 3);
   $("avviso").textContent = `Attenzione: i dati hanno ${Math.floor(vecchi)} giorni. Verifica che il programma sul PC venga aperto e aggiorni l'app.`;
-  disegnaScadenze(); disegnaDipendenti();
+  disegnaScadenze(); disegnaDipendenti(); disegnaAzienda();
+  const attiva = document.querySelector(".schede button.attiva");
+  if (attiva && attiva.classList.contains("nascosto")) document.querySelector('[data-vista="scadenze"]').click();
 }
 
 // ---------- flusso ----------
@@ -274,9 +302,10 @@ $("aggiorna").onclick = async () => {
 $("esci").onclick = () => { if (confirm("Uscire e dimenticare il codice su questo telefono?")) { memScrivi(null); codiceSessione = null; dati = null; mostraAccesso(); } };
 document.querySelectorAll(".schede button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".schede button").forEach(x => x.classList.toggle("attiva", x === b));
-  $("v-scadenze").classList.toggle("nascosto", b.dataset.vista !== "scadenze");
-  $("v-dipendenti").classList.toggle("nascosto", b.dataset.vista !== "dipendenti");
+  ["scadenze", "dipendenti", "azienda"].forEach(v => $("v-" + v).classList.toggle("nascosto", b.dataset.vista !== v));
 });
+$("filtri-az").onclick = ev => { const b = ev.target.closest("button"); if (!b) return; filtroAz = b.dataset.f;
+  document.querySelectorAll("#filtri-az button").forEach(x => x.classList.toggle("attiva", x === b)); disegnaAzienda(); };
 $("filtri").onclick = ev => { const b = ev.target.closest("button"); if (!b) return; filtro = b.dataset.g;
   document.querySelectorAll("#filtri button").forEach(x => x.classList.toggle("attiva", x === b)); disegnaScadenze(); };
 $("cerca").oninput = disegnaDipendenti;
