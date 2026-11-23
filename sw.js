@@ -1,5 +1,5 @@
 // Service worker: app disponibile anche senza rete; i dati si scaricano sempre freschi se possibile.
-const VERSIONE = "mbc-v2";
+const VERSIONE = "mbc-v3";
 const GUSCIO = ["./", "index.html", "manifest.webmanifest", "icona-192.png", "icona-512.png", "icona-180.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(VERSIONE).then(c => c.addAll(GUSCIO))); self.skipWaiting(); });
 self.addEventListener("activate", e => {
