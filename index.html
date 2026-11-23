@@ -281,6 +281,10 @@ async function carica(codice) {
   catch (e) { throw new Error("Impossibile scaricare i dati: controlla la connessione."); }
   try { dati = await decifra(pacco, codice); }
   catch (e) { throw new Error("Codice di accesso non valido."); }
+  if (dati.spenta) {   // licenza dell'app non attiva: il codice resta memorizzato
+    codiceSessione = codice; dati = null;
+    throw new Error("Servizio non attivo: l'app telefono non è compresa nella licenza attuale. Rivolgiti all'ufficio.");
+  }
   codiceSessione = codice;
   $("accesso").classList.add("nascosto"); $("app").classList.remove("nascosto");
   disegna();
@@ -296,7 +300,7 @@ $("modulo").addEventListener("submit", async ev => {
 });
 $("aggiorna").onclick = async () => {
   const b = $("aggiorna"); b.style.opacity = .5;
-  try { await carica(codiceSessione); } catch (e) { if (e.message.startsWith("Codice")) { memScrivi(null); mostraAccesso("Il codice è cambiato: inseriscilo di nuovo."); } else alert(e.message); }
+  try { await carica(codiceSessione); } catch (e) { if (e.message.startsWith("Codice")) { memScrivi(null); mostraAccesso("Il codice è cambiato: inseriscilo di nuovo."); } else if (e.message.startsWith("Servizio")) mostraAccesso(e.message); else alert(e.message); }
   b.style.opacity = 1;
 };
 $("esci").onclick = () => { if (confirm("Uscire e dimenticare il codice su questo telefono?")) { memScrivi(null); codiceSessione = null; dati = null; mostraAccesso(); } };
